@@ -42,7 +42,7 @@ public class CSIoTTrust {
     /**
      * @param args the command line arguments
      */
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, InterruptedException {
         // TODO code application logic here
         System.out.println("Hello World!"); // Display the string.
         long version=System.currentTimeMillis();
@@ -427,37 +427,39 @@ public class CSIoTTrust {
             
             
             
-       /*     
 
         String temp="gnuplot -e \"OUTPUT_VERSIONED='Xis_version"+version+".png'; INPUT_VERSIONED='Xis_version"+version+"'\""+" plotXis"; 
         PrintWriter printWriter = new PrintWriter ("bashshit");
         printWriter.println (temp);
         printWriter.close (); 
         System.out.println(temp);
-        Runtime.getRuntime().exec("bash bashshit");
+        Process p=Runtime.getRuntime().exec("bash bashshit");
+        p.waitFor();
+
         
         temp="gnuplot -e \"OUTPUT_VERSIONED='Lis_version"+version+".png'; INPUT_VERSIONED='Lis_version"+version+"'\""+" plotLis"; 
         printWriter = new PrintWriter ("bashshit");
         printWriter.println (temp);
         printWriter.close (); 
         System.out.println(temp);
-        Runtime.getRuntime().exec("bash bashshit");
+        p=Runtime.getRuntime().exec("bash bashshit");
+        p.waitFor();
         
         temp="gnuplot -e \"OUTPUT_VERSIONED='Pis_version"+version+".png'; INPUT_VERSIONED='Pis_version"+version+"'\""+" plotPis"; 
         printWriter = new PrintWriter ("bashshit");
         printWriter.println (temp);
         printWriter.close (); 
         System.out.println(temp);
-        Runtime.getRuntime().exec("bash bashshit");        
+        p=Runtime.getRuntime().exec("bash bashshit");        
+        p.waitFor();
         
         temp="gnuplot -e \"OUTPUT_VERSIONED='users_version"+version+".png'; INPUT_VERSIONED='users_version"+version+"'\""+" plotUis"; 
         printWriter = new PrintWriter ("bashshit");
         printWriter.println (temp);
         printWriter.close (); 
         System.out.println(temp);
-        Runtime.getRuntime().exec("bash bashshit");  
-
-*/
+        p=Runtime.getRuntime().exec("bash bashshit");  
+        p.waitFor();
 
           }
         
