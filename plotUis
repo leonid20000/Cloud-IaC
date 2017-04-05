@@ -1,0 +1,4 @@
+set term png
+set datafile separator ","
+set output OUTPUT_VERSIONED
+plot INPUT_VERSIONED using 1:2 notitle
