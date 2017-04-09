@@ -13,6 +13,8 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import static java.lang.Math.abs;
+import static java.lang.Math.ceil;
+import static java.lang.Math.floor;
 import java.util.Arrays;
 import java.util.Random;
 
@@ -33,6 +35,8 @@ public class CSIoTTrust {
     private static final String VFILENAME = "votes";
     private static final String UXFILENAME = "Uxis";
     private static final String RFILENAME = "Rjs";
+    private static final String BFILENAME = "bins";
+    
     
     
 
@@ -49,22 +53,26 @@ public class CSIoTTrust {
         int maximum=100;
         int minimum=1;
         int randomNum=0;
-        int DATA_SIZE=1000;
+        int DATA_SIZE=10000;
         int USER_SIZE=1000;
-        double mean=0;
-        double dev=1;
-        
+        double mean=10;
+        double dev=2;
+        double binLength=0.1;
+        int numberOfBins=0; // initialize later in code
+      
         double mean2=0;
         double dev2=1;    
         
         double[] X= new double[DATA_SIZE];
         double[] Ux= new double[DATA_SIZE];   
-        double[] L= new double[DATA_SIZE];
+        double[] V= new double[DATA_SIZE];
         double[] P= new double[DATA_SIZE];
+        
+        double[] L= new double[DATA_SIZE];
+        double[] pOld= new double[DATA_SIZE];
         double epsilon=0;
         double sigma=0.25;
         double l=1;
-
         double[] U= new double[USER_SIZE];
         double[] Q= new double[USER_SIZE];
         double[] NQ= new double[USER_SIZE];
@@ -73,8 +81,8 @@ public class CSIoTTrust {
         
         
         
-        int M=100;
-        int MV=100;  
+        int M=20;
+        int MV=20;  
         double[] sampleData= new double[M];
         double[] UxOfSamples= new double[M]; 
         int[] sampleVoters= new int[MV];
@@ -86,7 +94,7 @@ public class CSIoTTrust {
         randomNum = minimum + (int)(Math.random() * maximum);
         System.out.println(randomNum); // Display the string.
         
-        //generate the transactions
+        //generate the data
             try(FileWriter fw = new FileWriter(XFILENAME+"_version"+version, false);
                 BufferedWriter bw = new BufferedWriter(fw);
                 PrintWriter out = new PrintWriter(bw))
@@ -109,6 +117,123 @@ public class CSIoTTrust {
                 //exception handling left as an exercise for the reader
             }
             
+        //generate the bins
+            try(FileWriter fw = new FileWriter(BFILENAME+"_version"+version, false);
+                BufferedWriter bw = new BufferedWriter(fw);
+                PrintWriter out = new PrintWriter(bw))
+            {
+                double min=X[0];
+                double max=X[0];
+                double[] temp= new double[DATA_SIZE];
+                int count=0;
+
+                for(int i=0;i<DATA_SIZE;i++){
+                    if(X[i]>max) max=X[i];
+                    if(X[i]<min) min=X[i];
+                }
+                System.out.println("min is: "+min);
+                System.out.println("max is: "+max);
+                double currBinStartPtr=min;
+                double nextBinStartPtr=min+binLength; 
+                numberOfBins=(int)ceil((max-min)/binLength);
+
+                for(int j=0;j<numberOfBins;j++){
+                    count=0;
+                    for(int i=0;i<DATA_SIZE;i++){                                   
+
+                        if(X[i]>=currBinStartPtr && X[i]<nextBinStartPtr) { temp[count]=X[i]; count++; }
+
+                    }
+                    if(count!=0){
+                        P[j]=((double)count)/DATA_SIZE;
+                        V[j]=((nextBinStartPtr-currBinStartPtr)/2)+currBinStartPtr;;
+                    }
+                    else {P[j]=0; V[j]=((nextBinStartPtr-currBinStartPtr)/2)+currBinStartPtr;}
+                    
+                    currBinStartPtr=nextBinStartPtr;
+                    nextBinStartPtr+=binLength;
+                    out.println(V[j]+","+P[j]);
+                }
+                
+                if(bw!=null)
+                   bw.close();
+                if(fw!=null)
+                   fw.close();
+
+            } catch (IOException e) {
+                //exception handling left as an exercise for the reader
+            }
+            
+            
+            //generate one sample 
+
+
+                double rand;
+                double[] linePartitions= new double[numberOfBins+1];
+                double pSample=-1;
+                double oppSample=-1;
+                double rSample=-1;
+                
+                //p sample
+                linePartitions[0]=0;
+                for(int i=0;i<numberOfBins;i++){
+                    linePartitions[i+1]=P[i]+linePartitions[i];
+                }
+                
+                rand=Math.random();
+                for(int i=0;i<numberOfBins-1;i++){
+                    if(rand>=linePartitions[i] && rand<linePartitions[i+1]){
+                       pSample=V[i]; break;
+                    }
+                }
+                if(rand>=linePartitions[numberOfBins-1]){
+                        pSample=V[numberOfBins-1]; 
+                    }
+                System.out.println("P sample is: "+pSample);
+
+                //1-p sample
+                linePartitions[0]=0;
+                for(int i=0;i<numberOfBins;i++){
+                    linePartitions[i+1]=(1-P[i])+linePartitions[i];
+                }
+                
+                rand=Math.random();
+                for(int i=0;i<numberOfBins-1;i++){
+                    if(rand>=linePartitions[i] && rand<linePartitions[i+1]){
+                       oppSample=V[i]; break;
+                    }
+                }
+                if(rand>=linePartitions[numberOfBins-1]){
+                        oppSample=V[numberOfBins-1]; 
+                    }
+                System.out.println("1-P sample is: "+oppSample);
+                
+                //random sample
+                linePartitions[0]=0;
+                for(int i=0;i<numberOfBins;i++){
+                    linePartitions[i+1]=(1/numberOfBins)+linePartitions[i];
+                }
+                
+                rand=Math.random();
+                for(int i=0;i<numberOfBins-1;i++){
+                    if(rand>=linePartitions[i] && rand<linePartitions[i+1]){
+                       rSample=V[i]; break;
+                    }
+                }
+                if(rand>=linePartitions[numberOfBins-1]){
+                        rSample=V[numberOfBins-1]; 
+                    }
+                System.out.println("random sample is: "+rSample);
+          
+        
+            
+            
+            
+            
+            
+            
+            
+            
             
             
             //generate the Likelyhoods
@@ -118,7 +243,7 @@ public class CSIoTTrust {
             {
                 for(int i=0;i<DATA_SIZE;i++){
                     L[i]=1-Math.exp(-1*Math.pow(X[i]-mean, 2)/(2*Math.pow(dev, 2)))+epsilon;
-                    System.out.println("L["+i+"] is: "+L[i]);
+    //                System.out.println("L["+i+"] is: "+L[i]);
                     out.println(X[i]+","+L[i]);
                 }
                 
@@ -144,9 +269,9 @@ public class CSIoTTrust {
                 }
                 
                 for(int i=0;i<DATA_SIZE;i++){
-                    P[i]=L[i]/total;
-                    System.out.println("P["+i+"] is: "+P[i]);
-                    out.println(X[i]+","+P[i]);
+                    pOld[i]=L[i]/total;
+     //               System.out.println("pOld["+i+"] is: "+pOld[i]);
+                    out.println(X[i]+","+pOld[i]);
                 }                
                 
                 
@@ -173,7 +298,7 @@ public class CSIoTTrust {
                 lineSegments[0]=0;
                 java.util.Arrays.fill(visited,0,DATA_SIZE-1,false);
                 for(int i=0;i<DATA_SIZE;i++){
-                    lineSegments[i+1]=P[i]+lineSegments[i];
+                    lineSegments[i+1]=pOld[i]+lineSegments[i];
                 }
                 while(C<M){
                     x=Math.random();
@@ -211,7 +336,7 @@ public class CSIoTTrust {
                 for(int i=0;i<USER_SIZE;i++){
                     Random r = new Random();
                     U[i]=r.nextGaussian()*dev2+mean2;
-                    System.out.println("U["+i+"] is: "+U[i]);
+        //            System.out.println("U["+i+"] is: "+U[i]);
                     out.println(i+","+U[i]);
                 }
                 
@@ -233,7 +358,7 @@ public class CSIoTTrust {
                 long now=System.currentTimeMillis();
                 for(int j=0;j<USER_SIZE;j++){
                     Q[j]=(2/(1+Math.exp(-0.01*(now-T[j])*(R[j]+sigma))))-1;
-                    System.out.println("Q["+j+"] is: "+Q[j]);
+  //                  System.out.println("Q["+j+"] is: "+Q[j]);
                     out.println(j+","+Q[j]);
                 }
                 
@@ -259,7 +384,7 @@ public class CSIoTTrust {
                 
                 for(int j=0;j<USER_SIZE;j++){
                     NQ[j]=Q[j]/total;
-                    System.out.println("NQ["+j+"] is: "+NQ[j]);
+  //                  System.out.println("NQ["+j+"] is: "+NQ[j]);
                     out.println(j+","+NQ[j]);
                 }                
                 
@@ -303,7 +428,7 @@ public class CSIoTTrust {
                 }
                 
                 for(int i=0;i<MV;i++){
-                    System.out.println("Sample["+i+"] is: "+sampleVoters[i]);
+      //              System.out.println("Sample["+i+"] is: "+sampleVoters[i]);
 
                 }                
                 
@@ -328,13 +453,13 @@ public class CSIoTTrust {
                    if(abs(sampleData[i])<= dev){
                             for(int j=0;j<MV;j++){
                                 if(U[sampleVoters[j]]> maliciousity) votes[i][j]=-1; else { if(Math.random()>ignorranceDegree) votes[i][j]=1; else votes[i][j]=0; }
-                                System.out.println("User["+j+"] voted "+votes[i][j]+" for sampleData "+sampleData[i]);
+                //                System.out.println("User["+j+"] voted "+votes[i][j]+" for sampleData "+sampleData[i]);
                             }
                    }
                    else {
                             for(int j=0;j<MV;j++){
                                 if(U[sampleVoters[j]]> maliciousity) votes[i][j]=1; else { if(Math.random()>ignorranceDegree) votes[i][j]=-1; else votes[i][j]=0; }
-                                System.out.println("User["+j+"] voted "+votes[i][j]+" for sampleData "+sampleData[i]);
+           //                     System.out.println("User["+j+"] voted "+votes[i][j]+" for sampleData "+sampleData[i]);
                             }
                    }                   
                    
@@ -377,7 +502,7 @@ public class CSIoTTrust {
                        if(abs(X[i]-sampleData[j])<minAbsDiffxini) {ni=j; minAbsDiffxini=abs(X[i]-sampleData[j]);}                       
                    }
                    Ux[i]=UxOfSamples[ni]*Math.exp(-1*l*minAbsDiffxini);
-                   System.out.println("crediblity of x["+i+"]= "+X[i]+" is: "+Ux[i]);
+                //   System.out.println("crediblity of x["+i+"]= "+X[i]+" is: "+Ux[i]);
 
                    
                    
@@ -409,7 +534,7 @@ public class CSIoTTrust {
                             if(sigmaDeltaRep<0) R[sampleVoters[j]]=0;
                             else if(sigmaDeltaRep>10) R[sampleVoters[j]]=10; 
                             else R[sampleVoters[j]]=sigmaDeltaRep;
-                            System.out.println("User["+sampleVoters[j]+"] updated reputation is "+R[sampleVoters[j]]);
+                        //    System.out.println("User["+sampleVoters[j]+"] updated reputation is "+R[sampleVoters[j]]);
 
                    }
 
@@ -426,7 +551,7 @@ public class CSIoTTrust {
                         
             
             
-            
+        
 
         String temp="gnuplot -e \"OUTPUT_VERSIONED='Xis_version"+version+".png'; INPUT_VERSIONED='Xis_version"+version+"'\""+" plotXis"; 
         PrintWriter printWriter = new PrintWriter ("bashshit");
@@ -460,6 +585,15 @@ public class CSIoTTrust {
         System.out.println(temp);
         p=Runtime.getRuntime().exec("bash bashshit");  
         p.waitFor();
+
+        temp="gnuplot -e \"OUTPUT_VERSIONED='bins_version"+version+".png'; INPUT_VERSIONED='bins_version"+version+"'\""+" plotBins"; 
+        printWriter = new PrintWriter ("bashshit");
+        printWriter.println (temp);
+        printWriter.close (); 
+        System.out.println(temp);
+        p=Runtime.getRuntime().exec("bash bashshit");  
+        p.waitFor();
+
 
           }
         
